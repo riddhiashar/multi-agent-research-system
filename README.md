@@ -22,3 +22,9 @@ See `docs/architecture.md` for the full diagram and design decisions.
 - `state/` — shared state schema
 - `tests/` — unit and integration tests
 - `docs/` — architecture notes and diagrams
+
+
+## Design decisions
+- **Production architecture:** Supervisor pattern (see `docs/architecture.md`).
+- **Hierarchical and Network patterns** are documented there as alternatives, with the
+  conditions under which we would switch. They are not implemented.
