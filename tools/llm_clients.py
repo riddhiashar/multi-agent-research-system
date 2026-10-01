@@ -17,10 +17,17 @@ assert GEMINI_KEY, "Missing GEMINI_API_KEY"
 assert TAVILY_KEY, "Missing TAVILY_API_KEY"
 
 reasoning_llm = ChatGroq(model="qwen/qwen3.8-27b", temperature=0)
-
-
 gemini_client = genai.Client(api_key=GEMINI_KEY)
 tavily_client = TavilyClient(api_key=TAVILY_KEY)
+
+
+def call_llm(prompt: str) -> str:
+    """Shared wrapper around the reasoning LLM call. Every agent should import and
+    use THIS function rather than calling reasoning_llm.invoke directly — it keeps
+    the LangChain/Pydantic object out of agent code entirely, so tests can mock a
+    plain function instead of monkeypatching a Pydantic model (which Pydantic v2
+    blocks for undeclared attributes, as hit on Day 9)."""
+    return reasoning_llm.invoke(prompt).content
 
 
 def research_with_fallback(query: str) -> dict:
@@ -41,7 +48,7 @@ def research_with_fallback(query: str) -> dict:
             ]
         return {"answer": resp.text, "sources": sources, "provider": "gemini"}
     except Exception as e:
-        print(f"Gemini unavailable ({type(e).__name__}), falling back to Tavily...")
+        print(f" Gemini unavailable ({type(e).__name__}), falling back to Tavily...")
         results = tavily_client.search(query=query, max_results=3)
         sources = [{"title": r["title"], "url": r["url"]} for r in results["results"]]
         answer = " ".join(r.get("content", "")[:300] for r in results["results"])
