@@ -5,7 +5,7 @@ from tools.llm_clients import research_with_fallback
 from tools.logger import log_agent_event
 
 AGENT_NAME = "web_search_agent"
-MAX_QUERIES = 5  # caps Gemini grounding usage (free-tier quota) per run
+MAX_QUERIES = 5
 
 
 def _dedupe_sources(sources: List[Dict]) -> List[Dict]:
@@ -19,8 +19,6 @@ def _dedupe_sources(sources: List[Dict]) -> List[Dict]:
 
 
 def search_one(sub_question: str) -> Dict:
-    """Research a single sub-question. Never raises: failures come back as
-    status='failed' so one bad query can't crash the whole run."""
     start = time.time()
     try:
         raw = research_with_fallback(sub_question)
@@ -28,21 +26,14 @@ def search_one(sub_question: str) -> Dict:
         answer = (raw.get("answer") or "").strip()
         status = "ok" if (answer and sources) else "empty"
         result = {
-            "sub_question": sub_question,
-            "answer": answer,
-            "sources": sources,
-            "provider": raw.get("provider", "unknown"),
-            "status": status,
+            "sub_question": sub_question, "answer": answer, "sources": sources,
+            "provider": raw.get("provider", "unknown"), "status": status,
             "latency_s": round(time.time() - start, 2),
         }
     except Exception as e:
         result = {
-            "sub_question": sub_question,
-            "answer": "",
-            "sources": [],
-            "provider": "none",
-            "status": "failed",
-            "error": f"{type(e).__name__}: {e}",
+            "sub_question": sub_question, "answer": "", "sources": [], "provider": "none",
+            "status": "failed", "error": f"{type(e).__name__}: {e}",
             "latency_s": round(time.time() - start, 2),
         }
     log_agent_event(AGENT_NAME, "search_done", status=result["status"],
@@ -51,7 +42,6 @@ def search_one(sub_question: str) -> Dict:
 
 
 def web_search_node(state: Dict) -> Dict:
-    """LangGraph node: researches the plan's sub-questions and writes to state."""
     seen, queries = set(), []
     for q in state.get("plan", []):
         q = q.strip()
@@ -61,10 +51,12 @@ def web_search_node(state: Dict) -> Dict:
     queries = queries[:MAX_QUERIES]
 
     if not queries:
-        return {"errors": [{"agent": AGENT_NAME, "error": "empty plan: nothing to search"}]}
+        return {
+            "errors": [{"agent": AGENT_NAME, "error": "empty plan: nothing to search"}],
+            "model_usage_log": [{"agent": AGENT_NAME, "status": "skipped_no_input"}],
+        }
 
     results = [search_one(q) for q in queries]
-
     good = [r for r in results if r["status"] != "failed"]
     failed = [r for r in results if r["status"] == "failed"]
 
@@ -77,5 +69,5 @@ def web_search_node(state: Dict) -> Dict:
         "errors": [{"agent": AGENT_NAME, "sub_question": r["sub_question"], "error": r["error"]}
                    for r in failed],
         "model_usage_log": [{"agent": AGENT_NAME, "provider": p, "queries": n}
-                            for p, n in usage.items()],
+                            for p, n in usage.items()] or [{"agent": AGENT_NAME, "status": "ran_no_results"}],
     }

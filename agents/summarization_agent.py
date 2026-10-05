@@ -10,8 +10,7 @@ AGENT_NAME = "summarization_agent"
 def _group_by_sub_question(fact_check_results: List[Dict]) -> Dict[str, List[Dict]]:
     grouped = defaultdict(list)
     for fact in fact_check_results:
-        key = fact.get("sub_question", "unknown")
-        grouped[key].append(fact)
+        grouped[fact.get("sub_question", "unknown")].append(fact)
     return dict(grouped)
 
 
@@ -25,13 +24,11 @@ def _build_summary_prompt(sub_question: str, facts: List[Dict]) -> str:
 
     return f"""Write a short, honest research brief (3-6 sentences) answering: "{sub_question}"
 
-You MUST follow these rules exactly:
-- State CONFIRMED facts plainly, as established.
-- For DISPUTED facts, explicitly say they are disputed and briefly describe BOTH sides —
-  never silently pick one side or omit the disagreement.
-- For UNVERIFIED facts, hedge them explicitly (e.g. "according to a single source...").
-- Do not invent facts not listed below. Do not soften or hide disputes to make the
-  summary sound cleaner.
+Rules:
+- State CONFIRMED facts plainly.
+- For DISPUTED facts, explicitly say they are disputed and describe BOTH sides.
+- For UNVERIFIED facts, hedge explicitly (e.g. "according to a single source...").
+- Do not invent facts. Do not hide disputes.
 
 CONFIRMED facts:
 {fmt(confirmed)}
@@ -42,14 +39,11 @@ DISPUTED facts:
 UNVERIFIED facts:
 {fmt(unverified)}
 
-Write only the brief itself, no preamble.
+Write only the brief itself.
 """
 
 
 def summarize_sub_topic(sub_question: str, facts: List[Dict]) -> Dict:
-    """Summarizes one sub-topic's fact-checked claims. Never raises: on failure,
-    returns a summary that explicitly states it could not be generated, rather
-    than silently omitting the sub-topic or fabricating a summary."""
     if not facts:
         return {
             "sub_question": sub_question,
@@ -66,34 +60,25 @@ def summarize_sub_topic(sub_question: str, facts: List[Dict]) -> Dict:
         summary_text = call_llm(_build_summary_prompt(sub_question, facts)).strip()
         status = "ok"
     except Exception as e:
-        summary_text = (f"Summary could not be generated due to an error "
-                        f"({type(e).__name__}). Raw fact counts: {counts}.")
+        summary_text = f"Summary could not be generated due to an error ({type(e).__name__}). Raw fact counts: {counts}."
         status = "failed"
-        log_agent_event(AGENT_NAME, "summary_failed", sub_question=sub_question,
-                        error=f"{type(e).__name__}: {e}")
+        log_agent_event(AGENT_NAME, "summary_failed", sub_question=sub_question, error=f"{type(e).__name__}: {e}")
 
-    log_agent_event(AGENT_NAME, "summary_done", sub_question=sub_question, status=status,
-                    **counts)
-
-    return {
-        "sub_question": sub_question,
-        "summary": summary_text,
-        "status": status,
-        "fact_counts": counts,
-    }
+    log_agent_event(AGENT_NAME, "summary_done", sub_question=sub_question, status=status, **counts)
+    return {"sub_question": sub_question, "summary": summary_text, "status": status, "fact_counts": counts}
 
 
 def summarization_node(state: Dict) -> Dict:
-    """LangGraph node: summarizes every sub-topic's fact-checked claims."""
     fact_check_results = state.get("fact_check_results", [])
     if not fact_check_results:
-        return {"errors": [{"agent": AGENT_NAME, "error": "no fact_check_results to summarize"}]}
+        return {
+            "errors": [{"agent": AGENT_NAME, "error": "no fact_check_results to summarize"}],
+            "model_usage_log": [{"agent": AGENT_NAME, "status": "skipped_no_input"}],
+        }
 
     grouped = _group_by_sub_question(fact_check_results)
     summaries = [summarize_sub_topic(q, facts) for q, facts in grouped.items()]
-
     return {
         "summaries": summaries,
-        "model_usage_log": [{"agent": AGENT_NAME, "provider": "groq",
-                            "sub_topics": len(summaries)}],
+        "model_usage_log": [{"agent": AGENT_NAME, "provider": "groq", "sub_topics": len(summaries)}],
     }

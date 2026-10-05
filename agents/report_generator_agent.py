@@ -8,51 +8,37 @@ AGENT_NAME = "report_generator_agent"
 
 
 def _build_narrative_prompt(query: str, summaries: List[Dict]) -> str:
-    sections = "\n\n".join(
-        f"## {s['sub_question']}\n{s['summary']}" for s in summaries
-    )
-    return f"""Write a clear, well-organized research report answering this question:
-"{query}"
+    sections = "\n\n".join(f"## {s['sub_question']}\n{s['summary']}" for s in summaries)
+    return f"""Write a clear, well-organized research report answering: "{query}"
 
-Use the sub-topic briefs below as your source material. Combine them into flowing,
-coherent prose organized under clear headings — do not just copy them verbatim, but
-do not invent any facts, numbers, or claims not present in the briefs either.
-Preserve any hedging language (e.g. "according to a single source", "this is disputed")
-exactly as given — do not remove it or make claims sound more certain than the briefs do.
+Combine the sub-topic briefs below into flowing prose with headings. Do not invent facts.
+Preserve hedging language exactly as given — do not make claims sound more certain.
 
 Sub-topic briefs:
 {sections}
 
-Write the report in Markdown with a short intro, one section per sub-topic, and a
-one-paragraph conclusion. Do not include a confidence/sources appendix — that will
-be added separately.
+Markdown, short intro, one section per sub-topic, one-paragraph conclusion.
+Do not include a confidence/sources appendix — that is added separately.
 """
 
 
 def _generate_narrative(query: str, summaries: List[Dict]) -> Dict:
-    """Generates the narrative body via LLM. On failure, falls back to a plain
-    concatenation of the summaries — never returns nothing, since this is the
-    final user-facing output."""
     try:
         text = call_llm(_build_narrative_prompt(query, summaries)).strip()
         return {"text": text, "method": "llm"}
     except Exception as e:
         log_agent_event(AGENT_NAME, "narrative_failed", error=f"{type(e).__name__}: {e}")
         fallback = f"# Research Report: {query}\n\n" + "\n\n".join(
-            f"## {s['sub_question']}\n{s['summary']}" for s in summaries
-        )
+            f"## {s['sub_question']}\n{s['summary']}" for s in summaries)
         return {"text": fallback, "method": "fallback_template"}
 
 
 def _build_confidence_appendix(fact_check_results: List[Dict]) -> str:
-    """Pure Python, no LLM — cannot fail or hallucinate. Deterministically
-    summarizes confidence levels and lists every disputed/unverified claim."""
     if not fact_check_results:
         return "\n\n---\n## Confidence Appendix\nNo fact-checked claims were available.\n"
 
     counts = Counter(f["status"] for f in fact_check_results)
     total = len(fact_check_results)
-
     lines = ["\n\n---\n## Confidence Appendix\n"]
     lines.append(f"**Total claims reviewed:** {total}  ")
     lines.append(f"**Confirmed:** {counts.get('CONFIRMED', 0)} | "
@@ -61,13 +47,13 @@ def _build_confidence_appendix(fact_check_results: List[Dict]) -> str:
 
     disputed = [f for f in fact_check_results if f["status"] == "DISPUTED"]
     if disputed:
-        lines.append("###  Disputed claims\n")
+        lines.append("### ⚠️ Disputed claims\n")
         for f in disputed:
             lines.append(f"- \"{f['claim']}\" — *{f.get('reasoning', '')}*")
 
     unverified = [f for f in fact_check_results if f["status"] == "UNVERIFIED"]
     if unverified:
-        lines.append("\n###  Unverified claims (single source, no corroboration)\n")
+        lines.append("\n### ❓ Unverified claims (single source, no corroboration)\n")
         for f in unverified:
             lines.append(f"- \"{f['claim']}\"")
 
@@ -75,8 +61,6 @@ def _build_confidence_appendix(fact_check_results: List[Dict]) -> str:
 
 
 def generate_report(query: str, summaries: List[Dict], fact_check_results: List[Dict]) -> Dict:
-    """Assembles the full report. Guaranteed to return a non-empty report even
-    if the LLM narrative generation fails, since the appendix is LLM-free."""
     if not summaries:
         return {
             "report": f"# Research Report: {query}\n\nNo verified information was found for this query.",
@@ -89,21 +73,21 @@ def generate_report(query: str, summaries: List[Dict], fact_check_results: List[
 
     log_agent_event(AGENT_NAME, "report_done", method=narrative["method"],
                     sub_topics=len(summaries), total_claims=len(fact_check_results))
-
     return {"report": full_report, "method": narrative["method"]}
 
 
 def report_generator_node(state: Dict) -> Dict:
-    """LangGraph node: assembles the final report from state."""
     summaries = state.get("summaries", [])
     fact_check_results = state.get("fact_check_results", [])
     query = state.get("query", "Unknown query")
 
     if not summaries:
-        return {"errors": [{"agent": AGENT_NAME, "error": "no summaries to build report from"}]}
+        return {
+            "errors": [{"agent": AGENT_NAME, "error": "no summaries to build report from"}],
+            "model_usage_log": [{"agent": AGENT_NAME, "status": "skipped_no_input"}],
+        }
 
     result = generate_report(query, summaries, fact_check_results)
-
     return {
         "final_report": result["report"],
         "model_usage_log": [{"agent": AGENT_NAME, "provider": "groq", "method": result["method"]}],
