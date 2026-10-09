@@ -44,3 +44,26 @@ execution code itself. This is good news for Day 17: retry-with-backoff (already
 present in search_one's design pattern from Day 8, just needs to trigger reliably
 on rate-limit-specific errors per the Day 18 plan) should be sufficient to absorb
 this, rather than requiring a fundamentally different concurrency approach.
+
+
+## Day 17 follow-up: rate-limit pressure shifted downstream
+Real end-to-end run after implementing Send-based parallel web search: search
+stage itself was flawless (4/4 ok, 0 errors, 0 retries needed). However,
+summarization (3/4 failed) and report generation (narrative failed, used
+fallback_template) BOTH hit Groq 429 errors in the same run.
+
+Root cause: parallel search finishes all sub-questions almost simultaneously,
+which means extraction and fact-checking for all of them complete close
+together too, concentrating summarization/report LLM calls into a tighter
+time window than the old sequential pipeline had. The retry logic added in
+Day 17 only covers search_one (via web_search_agent) — summarization_agent
+and report_generator_agent still call call_llm directly with zero retry.
+
+All fail-safes worked correctly: failed summaries still returned real content
+with fact counts, the report still completed via fallback_template. Nothing
+crashed. But this confirms the gap needs fixing for the WHOLE pipeline, not
+just search.
+
+Action for Day 18: move retry logic from web_search_agent into the shared
+call_llm wrapper in tools/llm_clients.py, so every agent gets rate-limit
+retry for free rather than reimplementing it per-agent.

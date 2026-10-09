@@ -1,14 +1,13 @@
 from typing import Dict, List
 
+from langgraph.types import Send
 from tools.llm_clients import call_llm
 from tools.logger import log_agent_event
+from agents.web_search_agent import MAX_QUERIES
 
 AGENT_NAME = "supervisor_agent"
 MAX_ITERATIONS = 8
 
-# Hard data-dependency order: each stage needs the previous stage's output to function.
-# This is NOT an LLM decision — it's fixed by what data exists at each point, so routing
-# it deterministically is more reliable, cheaper, and fully testable without mocking.
 PIPELINE = [
     ("web_search_agent", "web_search"),
     ("data_extraction_agent", "data_extraction"),
@@ -27,25 +26,20 @@ Respond with each sub-question on its own line, nothing else. No numbering, no p
 
 
 def generate_plan(query: str) -> List[str]:
-    """The one genuinely ambiguous decision the Supervisor makes with an LLM —
-    everything else below is deterministic rule-based routing."""
     try:
         raw = call_llm(_build_plan_prompt(query))
         sub_questions = [line.strip("- ").strip() for line in raw.split("\n") if line.strip()]
         return sub_questions[:5] if sub_questions else [query]
     except Exception as e:
         log_agent_event(AGENT_NAME, "plan_generation_failed", error=f"{type(e).__name__}: {e}")
-        return [query]  # fail-safe: treat the raw query as the only sub-question
+        return [query]
 
 
 def _agents_completed(state: Dict) -> set:
-    """Reads model_usage_log to determine which agents have already been attempted
-    (success OR a logged 'ran but found nothing' / 'skipped, no input' marker)."""
     return {entry.get("agent") for entry in state.get("model_usage_log", []) if entry.get("agent")}
 
 
 def supervisor_node(state: Dict) -> Dict:
-    """Deterministic router. Only calls an LLM once, to generate the initial plan."""
     iteration = state.get("iteration_count", 0) + 1
 
     if iteration > MAX_ITERATIONS:
@@ -73,6 +67,24 @@ def supervisor_node(state: Dict) -> Dict:
     return updates
 
 
-def route_from_supervisor(state: Dict) -> str:
-    """Conditional-edge function: just reads what supervisor_node already decided."""
-    return state.get("next_agent", "failed")
+def route_from_supervisor(state: Dict):
+    """Returns either a plain node-name string (unchanged stages) or a list of
+    Send objects (NEW, Day 17) to fan out web_search into parallel branches —
+    one per sub-question, capped at MAX_QUERIES, deduped."""
+    next_agent = state.get("next_agent", "failed")
+
+    if next_agent == "web_search":
+        seen, queries = set(), []
+        for q in state.get("plan", []):
+            q = q.strip()
+            if q and q.lower() not in seen:
+                seen.add(q.lower())
+                queries.append(q)
+        queries = queries[:MAX_QUERIES]
+
+        if not queries:
+            return "data_extraction"  # nothing to search; let downstream handle empty input
+
+        return [Send("web_search_single", {"query": q}) for q in queries]
+
+    return next_agent
