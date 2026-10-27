@@ -8,11 +8,15 @@ from agents.summarization_agent import summarization_node
 from agents.report_generator_agent import report_generator_node
 
 
-def build_graph():
+def build_graph(checkpointer=None, interrupt_before=None):
+    """checkpointer + interrupt_before are optional (Day 19) — when provided,
+    the graph pauses before the named node(s) so a human can review state
+    before execution continues. Omitted, the graph runs fully autonomously
+    as it has since Day 13."""
     graph = StateGraph(ResearchState)
 
     graph.add_node("supervisor", supervisor_node)
-    graph.add_node("web_search_single", search_single_node)  # Send target — parallel fan-out
+    graph.add_node("web_search_single", search_single_node)
     graph.add_node("data_extraction", data_extraction_node)
     graph.add_node("fact_checking", fact_checking_node)
     graph.add_node("summarization", summarization_node)
@@ -28,9 +32,13 @@ def build_graph():
         "done": END,
         "failed": END,
     })
-    # all N parallel web_search_single branches converge back to supervisor in
-    # one superstep (LangGraph's Pregel-style barrier), same as every other stage
     for node in ["web_search_single", "data_extraction", "fact_checking", "summarization", "report_generator"]:
         graph.add_edge(node, "supervisor")
 
-    return graph.compile()
+    compile_kwargs = {}
+    if checkpointer is not None:
+        compile_kwargs["checkpointer"] = checkpointer
+    if interrupt_before is not None:
+        compile_kwargs["interrupt_before"] = interrupt_before
+
+    return graph.compile(**compile_kwargs)
