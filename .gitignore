@@ -5,3 +5,4 @@ venv/
 .ipynb_checkpoints/
 data/logs/
 *.log
+data/checkpoints.db
