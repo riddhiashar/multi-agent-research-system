@@ -6,3 +6,6 @@ venv/
 data/logs/
 *.log
 data/checkpoints.db
+data/checkpoints.db-shm
+data/checkpoints.db-wal
+data/*.db-journal
