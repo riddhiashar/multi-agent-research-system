@@ -4,25 +4,28 @@ from typing import Dict, List
 
 from tools.llm_clients import call_llm
 from tools.logger import log_agent_event
+from tools.evidence import independent_source_count, MIN_INDEPENDENT_SOURCES
 
 AGENT_NAME = "fact_checking_agent"
 MAX_FACTS_PER_BATCH = 15
 
 
 def _build_fact_check_prompt(facts: List[Dict]) -> str:
-    numbered = "\n".join(f'{i}. "{f["claim"]}" (sources: {len(f.get("sources", []))})'
-                         for i, f in enumerate(facts))
+    numbered = "\n".join(
+        f'{i}. "{f["claim"]}" (independent sources: {independent_source_count(f.get("sources", []))})'
+        for i, f in enumerate(facts)
+    )
     return f"""You are fact-checking a set of claims gathered during research. For EACH
 numbered claim below, classify it as exactly one of:
 
-- CONFIRMED: corroborated by multiple independent sources, or clearly consistent with other claims
+- CONFIRMED: at least {MIN_INDEPENDENT_SOURCES} independent sources (see the count) and nothing in this list contradicts it
 - DISPUTED: contradicts another claim in this list
-- UNVERIFIED: plausible but only backed by a single source, with no corroboration or contradiction
+- UNVERIFIED: fewer than {MIN_INDEPENDENT_SOURCES} independent sources, and no contradiction
 
 Claims:
 {numbered}
 
-Respond with ONLY a JSON array: [{{"index": 0, "status": "CONFIRMED", "reasoning": "..."}}, ...]
+Respond with ONLY a JSON array: [{{"index": 0, "status": "CONFIRMED", "reasoning": "one short sentence"}}, ...]
 """
 
 
@@ -47,6 +50,20 @@ def _parse_fact_check_response(raw_text: str, expected_count: int) -> List[Dict]
         return []
 
 
+def apply_evidence_gate(fact: Dict, verdict: Dict) -> Dict:
+    """Deterministic check applied AFTER the LLM verdict: a claim cannot stay CONFIRMED
+    unless it has enough independent source domains, whatever the model said."""
+    count = independent_source_count(fact.get("sources", []))
+    status, reasoning = verdict["status"], verdict["reasoning"]
+    downgraded = False
+    if status == "CONFIRMED" and count < MIN_INDEPENDENT_SOURCES:
+        status = "UNVERIFIED"
+        reasoning = f"[downgraded: {count} independent source(s), need {MIN_INDEPENDENT_SOURCES}] {reasoning}"
+        downgraded = True
+    return {**fact, "status": status, "reasoning": reasoning,
+            "independent_sources": count, "downgraded": downgraded}
+
+
 def fact_check_batch(facts: List[Dict]) -> List[Dict]:
     if not facts:
         return []
@@ -58,13 +75,14 @@ def fact_check_batch(facts: List[Dict]) -> List[Dict]:
     except Exception as e:
         log_agent_event(AGENT_NAME, "batch_failed", error=f"{type(e).__name__}: {e}", batch_size=len(facts))
         verdicts = [{"status": "UNVERIFIED", "reasoning": "fact-check call failed; defaulted to unverified"}
-                   for _ in facts]
+                    for _ in facts]
 
-    checked = [{**fact, "status": v["status"], "reasoning": v["reasoning"]} for fact, v in zip(facts, verdicts)]
-    counts = {}
-    for v in verdicts:
-        counts[v["status"]] = counts.get(v["status"], 0) + 1
-    log_agent_event(AGENT_NAME, "batch_done", **counts)
+    checked = [apply_evidence_gate(f, v) for f, v in zip(facts, verdicts)]
+
+    counts: Dict[str, int] = {}
+    for c in checked:
+        counts[c["status"]] = counts.get(c["status"], 0) + 1
+    log_agent_event(AGENT_NAME, "batch_done", downgraded=sum(1 for c in checked if c["downgraded"]), **counts)
     return checked
 
 

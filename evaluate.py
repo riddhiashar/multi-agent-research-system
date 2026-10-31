@@ -83,3 +83,35 @@ def print_eval_report(query: str, checks: List[Dict]):
     for c in checks:
         mark = "✅" if c["passed"] else "❌"
         print(f"{mark} {c['name']}: {c['detail']}")
+
+
+def eval_confirmed_claims_have_independent_sources(result: Dict) -> Dict:
+    """Day 23: every CONFIRMED claim must carry the minimum number of independent source domains."""
+    from tools.evidence import independent_source_count, MIN_INDEPENDENT_SOURCES
+    confirmed = [f for f in result.get("fact_check_results", []) if f.get("status") == "CONFIRMED"]
+    weak = [f["claim"] for f in confirmed
+            if independent_source_count(f.get("sources", [])) < MIN_INDEPENDENT_SOURCES]
+    return {
+        "name": "confirmed_claims_have_independent_sources",
+        "passed": not weak,
+        "detail": f"{len(confirmed)} confirmed, {len(weak)} below the {MIN_INDEPENDENT_SOURCES}-source bar",
+    }
+
+
+def eval_disputes_surfaced_in_narrative(result: Dict) -> Dict:
+    """Replaces eval_disputes_are_surfaced, which could never fail because the appendix
+    always contains 'Disputed'. This only looks at the narrative above the appendix."""
+    disputed = [f for f in result.get("fact_check_results", []) if f.get("status") == "DISPUTED"]
+    if not disputed:
+        return {"name": "disputes_surfaced_in_narrative", "passed": True,
+                "detail": "no disputed claims this run (n/a)"}
+    narrative = (result.get("final_report") or "").split("## Confidence Appendix")[0].lower()
+    ok = any(w in narrative for w in ["dispute", "disagree", "conflict", "contradic", "contested", "debate"])
+    return {"name": "disputes_surfaced_in_narrative", "passed": ok,
+            "detail": f"{len(disputed)} disputed claim(s); dispute language in narrative: {ok}"}
+
+
+ALL_CHECKS[:] = [c for c in ALL_CHECKS if c is not eval_disputes_are_surfaced] + [
+    eval_disputes_surfaced_in_narrative,
+    eval_confirmed_claims_have_independent_sources,
+]

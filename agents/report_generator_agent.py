@@ -45,6 +45,10 @@ def _build_confidence_appendix(fact_check_results: List[Dict]) -> str:
                 f"**Disputed:** {counts.get('DISPUTED', 0)} | "
                 f"**Unverified:** {counts.get('UNVERIFIED', 0)}\n")
 
+    downgraded = [f for f in fact_check_results if f.get("downgraded")]
+    if downgraded:
+        lines.append(f"**Held back by the evidence gate (fewer than 2 independent sources):** {len(downgraded)}\n")
+
     disputed = [f for f in fact_check_results if f["status"] == "DISPUTED"]
     if disputed:
         lines.append("### ⚠️ Disputed claims\n")

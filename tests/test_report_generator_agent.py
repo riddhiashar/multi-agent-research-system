@@ -59,3 +59,14 @@ def test_node_success(monkeypatch):
     out = rga.report_generator_node(state)
     assert "final_report" in out
     assert "narrative text" in out["final_report"]
+
+
+def test_appendix_reports_downgraded_count():
+    held_back = [
+        {"claim": "A", "status": "UNVERIFIED", "reasoning": "[downgraded]", "sources": [], "downgraded": True},
+        {"claim": "B", "status": "CONFIRMED", "reasoning": "", "sources": [], "downgraded": False},
+    ]
+    assert "Held back by the evidence gate" in rga._build_confidence_appendix(held_back)
+
+    clean = [{"claim": "B", "status": "CONFIRMED", "reasoning": "", "sources": [], "downgraded": False}]
+    assert "evidence gate" not in rga._build_confidence_appendix(clean)
