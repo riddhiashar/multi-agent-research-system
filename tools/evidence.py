@@ -7,6 +7,8 @@ MIN_INDEPENDENT_SOURCES = 2
 LOW_QUALITY_DOMAINS = {
     "youtube.com", "youtu.be", "facebook.com", "tiktok.com", "pinterest.com",
     "instagram.com", "x.com", "twitter.com", "quora.com",
+    # Added Day 26: user-generated posts are not independent corroboration.
+    "linkedin.com", "reddit.com", "threads.net", "t.me", "snapchat.com",
 }
 
 _TWO_PART_SUFFIXES = {"co.uk", "com.au", "co.in", "com.cn", "co.jp", "com.br", "co.kr"}

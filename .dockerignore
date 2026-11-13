@@ -1,0 +1,11 @@
+.env
+.venv
+venv
+__pycache__
+*.pyc
+.git
+.github
+data/history
+data/cache
+data/usage.json
+tests

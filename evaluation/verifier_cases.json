@@ -1,0 +1,226 @@
+{
+ "entities_from_question": [
+  "tesla",
+  "catl",
+  "redwood",
+  "iea"
+ ],
+ "cases": [
+  {
+   "claim": "Tesla recycles 92% of battery materials.",
+   "sentence": "Tesla recycles 92% of battery materials at its Nevada plant.",
+   "expected": "supports",
+   "note": "same subject and figure"
+  },
+  {
+   "claim": "Tesla recycles 92% of battery materials.",
+   "sentence": "CATL recycles 92% of battery materials at its plants.",
+   "expected": "unrelated",
+   "note": "wrong company"
+  },
+  {
+   "claim": "Tesla recycles 92% of battery materials.",
+   "sentence": "Tesla recycles 70% of battery materials at its Nevada plant.",
+   "expected": "contradicts",
+   "note": "different figure"
+  },
+  {
+   "claim": "Tesla recycles 92% of battery materials.",
+   "sentence": "Tesla does not recycle 92% of battery materials.",
+   "expected": "contradicts",
+   "note": "negation"
+  },
+  {
+   "claim": "Recovery rates for nickel and cobalt reach 95-99%.",
+   "sentence": "Nickel and cobalt recovery rates reach 97% in commercial plants.",
+   "expected": "supports",
+   "note": "figure inside claimed range"
+  },
+  {
+   "claim": "Recovery rates for nickel and cobalt reach 95%.",
+   "sentence": "Nickel and cobalt recovery rates reach 95-99% in commercial plants.",
+   "expected": "supports",
+   "note": "claim figure inside source range"
+  },
+  {
+   "claim": "Recovery rates for nickel and cobalt reach 95-99%.",
+   "sentence": "Nickel and cobalt recovery rates reach 80% in commercial plants.",
+   "expected": "contradicts",
+   "note": "figure outside range"
+  },
+  {
+   "claim": "The plant processes 95 GWh of cells a year.",
+   "sentence": "The plant recycles 95% of cells a year.",
+   "expected": "uncertain",
+   "note": "same number, different unit"
+  },
+  {
+   "claim": "The plant processes 9.5 million tonnes of scrap a year.",
+   "sentence": "The plant processes 9,500,000 tonnes of scrap a year.",
+   "expected": "supports",
+   "note": "scale words vs digits"
+  },
+  {
+   "claim": "The market will reach $2 billion by 2030.",
+   "sentence": "The market will reach 2 billion dollars by 2030.",
+   "expected": "supports",
+   "note": "currency forms"
+  },
+  {
+   "claim": "The market will reach $2 billion by 2030.",
+   "sentence": "The market will reach $2 billion by 2035.",
+   "expected": "uncertain",
+   "note": "different period"
+  },
+  {
+   "claim": "The market will reach $2 billion by 2030.",
+   "sentence": "The market will reach $5 billion by 2030.",
+   "expected": "contradicts",
+   "note": "different amount"
+  },
+  {
+   "claim": "Costs fall 30% with recycling at scale.",
+   "sentence": "Costs rise 30% with recycling at scale.",
+   "expected": "contradicts",
+   "note": "opposite direction"
+  },
+  {
+   "claim": "Costs fall 30% with recycling at scale.",
+   "sentence": "Costs fall 30% with recycling at scale, analysts say.",
+   "expected": "supports",
+   "note": "same"
+  },
+  {
+   "claim": "Plants recover up to 95% of lithium.",
+   "sentence": "Plants recover at least 95% of lithium.",
+   "expected": "uncertain",
+   "note": "opposite bounds"
+  },
+  {
+   "claim": "Hydrometallurgical processing achieves a 95% recovery rate for lithium.",
+   "sentence": "Hydrometallurgical processing achieves a 95% recovery rate for lithium in tests.",
+   "expected": "supports",
+   "note": "extra context ok"
+  },
+  {
+   "claim": "Hydrometallurgical processing achieves a 95% recovery rate for lithium.",
+   "sentence": "Hydrometallurgical processing does not achieve a 95% recovery rate for lithium.",
+   "expected": "contradicts",
+   "note": "negation"
+  },
+  {
+   "claim": "Redwood Materials operates the largest lithium-ion battery recycling facility outside Asia.",
+   "sentence": "Redwood Materials launched a second-life battery storage partnership.",
+   "expected": "unrelated",
+   "note": "different topic"
+  },
+  {
+   "claim": "Redwood Materials operates the largest lithium-ion battery recycling facility outside Asia.",
+   "sentence": "Redwood Materials operates the largest lithium-ion battery recycling facility outside Asia today.",
+   "expected": "supports",
+   "note": "wording match"
+  },
+  {
+   "claim": "CATL began mass production of sodium-ion batteries in 2023.",
+   "sentence": "CATL began mass production of sodium-ion batteries in 2021.",
+   "expected": "uncertain",
+   "note": "different year"
+  },
+  {
+   "claim": "CATL began mass production of sodium-ion batteries in 2023.",
+   "sentence": "CATL began mass production of sodium-ion batteries in 2023.",
+   "expected": "supports",
+   "note": "same"
+  },
+  {
+   "claim": "Solid-state batteries have a lower fire risk than liquid-electrolyte batteries.",
+   "sentence": "Solid-state batteries have a higher fire risk than liquid-electrolyte batteries.",
+   "expected": "contradicts",
+   "note": "opposite comparison"
+  },
+  {
+   "claim": "Solid-state batteries have a lower fire risk than liquid-electrolyte batteries.",
+   "sentence": "Solid-state batteries have a lower fire risk than liquid-electrolyte batteries according to the study.",
+   "expected": "supports",
+   "note": "same comparison"
+  },
+  {
+   "claim": "Lithium-ion cells last 1,000 cycles.",
+   "sentence": "Lithium-ion cells last 1000 cycles.",
+   "expected": "supports",
+   "note": "thousands separator"
+  },
+  {
+   "claim": "Lithium-ion cells last 1,000 cycles.",
+   "sentence": "Lithium-ion cells last 500 cycles.",
+   "expected": "contradicts",
+   "note": "different count"
+  },
+  {
+   "claim": "Sodium-ion cells cost 20% less than lithium iron phosphate cells.",
+   "sentence": "Sodium-ion cells cost 20% more than lithium iron phosphate cells.",
+   "expected": "contradicts",
+   "note": "less vs more"
+  },
+  {
+   "claim": "The IEA expects recycling to meet 20% of battery demand by 2030.",
+   "sentence": "The IEA expects recycling to meet 20% of battery demand by 2030.",
+   "expected": "supports",
+   "note": "same"
+  },
+  {
+   "claim": "The IEA expects recycling to meet 20% of battery demand by 2030.",
+   "sentence": "Analysts expect recycling to meet 20% of battery demand by 2030.",
+   "expected": "unrelated",
+   "note": "IEA not named"
+  },
+  {
+   "claim": "Heat pumps cut emissions by 60% compared with gas boilers.",
+   "sentence": "Heat pumps cut emissions by 60% compared with gas boilers in cold climates.",
+   "expected": "supports",
+   "note": "extra scope in source"
+  },
+  {
+   "claim": "Heat pumps cut emissions by 60% compared with gas boilers.",
+   "sentence": "Heat pumps cut emissions by 30% compared with gas boilers.",
+   "expected": "contradicts",
+   "note": "different figure"
+  },
+  {
+   "claim": "Heat pumps cut emissions by 60% compared with gas boilers.",
+   "sentence": "Gas boilers remain popular in many countries.",
+   "expected": "unrelated",
+   "note": "off topic"
+  },
+  {
+   "claim": "The pilot line produces 2 GWh per year.",
+   "sentence": "The pilot line produces 2 GWh per year.",
+   "expected": "supports",
+   "note": "energy units match"
+  },
+  {
+   "claim": "The pilot line produces 2 GWh per year.",
+   "sentence": "The pilot line produces 2000 MWh per year.",
+   "expected": "supports",
+   "note": "unit conversion"
+  },
+  {
+   "claim": "The pilot line produces 2 GWh per year.",
+   "sentence": "The pilot line produces 5 GWh per year.",
+   "expected": "contradicts",
+   "note": "different energy"
+  },
+  {
+   "claim": "Retrieval-augmented generation reduces hallucinations by 40%.",
+   "sentence": "Retrieval-augmented generation reduces hallucinations by 40% in benchmarks.",
+   "expected": "supports",
+   "note": "same"
+  },
+  {
+   "claim": "Retrieval-augmented generation reduces hallucinations by 40%.",
+   "sentence": "Retrieval-augmented generation increases hallucinations by 40% in benchmarks.",
+   "expected": "contradicts",
+   "note": "reduces vs increases"
+  }
+ ]
+}

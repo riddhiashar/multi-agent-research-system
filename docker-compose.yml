@@ -1,0 +1,9 @@
+services:
+  research:
+    build: .
+    ports:
+      - "8501:8501"
+    env_file: .env
+    volumes:
+      - ./data:/app/data        # keeps saved runs and the usage counter between restarts
+    restart: unless-stopped
