@@ -16,7 +16,7 @@ load_dotenv()
 from tools import cache, guardrails, output_validator  # noqa: E402
 from tools.evidence_trace import CATEGORY_LABEL, CATEGORY_ORDER, claim_funnel, trace_all  # noqa: E402
 from tools.metrics import RunMetrics, evidence_stats  # noqa: E402
-from ui import charts, compare, history, report, retry, runstats, views  # noqa: E402
+from ui import charts, compare, guard, history, report, retry, runstats, views  # noqa: E402
 from ui.progress import PipelineTracker, iter_updates, render_pipeline_html  # noqa: E402
 from ui.snapshot import build_snapshot  # noqa: E402
 
